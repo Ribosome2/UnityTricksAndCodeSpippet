@@ -1,0 +1,157 @@
+//UGUI ScrollRect CenterOnChild
+
+using UnityEngine;
+using System.Collections;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+using System.Collections.Generic;
+using DG.Tweening;
+public class PageScrollRect : MonoBehaviour, IDragHandler,IEndDragHandler{
+
+    public ScrollRect scrollRect;
+    public RectTransform viewPointTransform;
+    public RectTransform targetTransform;
+    public int curCenterIndex;
+   
+    void OnGUI()
+    {
+        if(GUILayout.Button("DoCenter"))
+        {
+            CenterOnItem(targetTransform);
+        }
+
+        if(GUILayout.Button("NextPage"))
+        {
+            FlipPage(true);
+        }
+
+        if (GUILayout.Button("PrevPage"))
+        {
+            FlipPage(false);
+        }
+
+    }
+
+    void CenterChildByIndex(int index)
+    {
+        if(index>=0 && index<scrollRect.content.transform.childCount)
+        {
+            curCenterIndex = index;
+            CenterOnItem(scrollRect.content.transform.GetChild(index).GetComponent<RectTransform>());
+        }
+    }
+
+
+    public void  FlipPage(bool nextPage)
+    {
+         if(nextPage)
+         {
+             CenterChildByIndex(curCenterIndex + 1);
+         }
+         else
+         {
+             CenterChildByIndex(curCenterIndex -1);
+         }
+    }
+
+    /// <summary>
+    /// 指定一个 item让其定位到ScrollRect中间
+    /// </summary>
+    /// <param name="target">需要定位到的目标</param>
+    public void CenterOnItem(RectTransform target)
+    {
+        Debug.Log("Going to center on " + target.name);
+        // Item is here
+        var itemCenterPositionInScroll = GetWorldPointInWidget(scrollRect.GetComponent<RectTransform>(), GetWidgetWorldPoint(target));
+        Debug.Log("Item Anchor Pos In Scroll: " + itemCenterPositionInScroll);
+        // But must be here
+        var targetPositionInScroll = GetWorldPointInWidget(scrollRect.GetComponent<RectTransform>(), GetWidgetWorldPoint(viewPointTransform));
+        Debug.Log("Target Anchor Pos In Scroll: " + targetPositionInScroll);
+        // So it has to move this distance
+        var difference = targetPositionInScroll - itemCenterPositionInScroll;
+        difference.z = 0f;
+
+        RectTransform contentTransform = scrollRect.content;
+
+        var newNormalizedPosition = new Vector2(difference.x / (contentTransform.rect.width - viewPointTransform.rect.width),
+            difference.y / (contentTransform.rect.height - viewPointTransform.rect.height));
+
+        newNormalizedPosition = scrollRect.normalizedPosition - newNormalizedPosition;
+
+        
+       
+        newNormalizedPosition.x = Mathf.Clamp01(newNormalizedPosition.x);
+        newNormalizedPosition.y = Mathf.Clamp01(newNormalizedPosition.y);
+       
+       // scrollRect.normalizedPosition = new Vector2(scrollRect.normalizedPosition.x, newNormalizedPosition.y);
+        if (scrollRect.vertical)
+        {
+            DOTween.To(() => scrollRect.normalizedPosition, y => scrollRect.normalizedPosition = y, newNormalizedPosition, 1f);
+        }
+        else if(scrollRect.horizontal)
+        {
+            DOTween.To(() => scrollRect.normalizedPosition, x => scrollRect.normalizedPosition = x, newNormalizedPosition, 1f);
+        }
+    }
+
+    Vector3 GetWidgetWorldPoint(RectTransform target)
+    {
+        //pivot position + item size has to be included
+        var pivotOffset = new Vector3(
+            (0.5f - target.pivot.x) * target.rect.size.x,
+            (0.5f - target.pivot.y) * target.rect.size.y,
+            0f);
+        var localPosition = target.localPosition + pivotOffset;
+        return target.parent.TransformPoint(localPosition);
+    }
+
+    Vector3 GetWorldPointInWidget(RectTransform target, Vector3 worldPoint)
+    {
+        return target.InverseTransformPoint(worldPoint);
+    }
+
+    public void OnDrag(PointerEventData eventData)
+    {
+        //throw new System.NotImplementedException();
+    }
+
+    public void OnEndDrag(PointerEventData eventData)
+    {
+        //throw new System.NotImplementedException();
+        CenterToClosestChild(scrollRect.content);
+    }
+
+
+    void CenterToClosestChild(Transform parentChild)
+    {
+        Transform closestChild=null;
+        float dist=float.MaxValue;
+        
+        var currentPos = GetWorldPointInWidget(scrollRect.GetComponent<RectTransform>(), GetWidgetWorldPoint(viewPointTransform));
+        for(int i=0;i<parentChild.childCount;i++)
+        {
+            Transform child = parentChild.GetChild(i);
+            RectTransform rect = child.GetComponent<RectTransform>();
+            var itemCenterPositionInScroll = GetWorldPointInWidget(scrollRect.GetComponent<RectTransform>(), GetWidgetWorldPoint(rect));
+            Debug.Log("Item Anchor Pos In Scroll: " + itemCenterPositionInScroll);
+            float distance =Mathf.Abs(currentPos.y - itemCenterPositionInScroll.y);
+           if(distance<dist)
+           {
+               dist = distance;
+               closestChild = child;
+               curCenterIndex = i;
+           }
+        }
+
+        if(closestChild)
+        {
+            CenterOnItem(closestChild.GetComponent<RectTransform>());
+        }
+        else
+        {
+            Debug.LogError("Got nothing to center on ");
+        }
+
+    }
+
+}
