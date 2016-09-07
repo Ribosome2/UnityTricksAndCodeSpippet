@@ -1,0 +1,5 @@
+Visual Studio里面可以使Shader语法高亮的插件
+NShader，安装可能提示需要的NetFrameWork没有安装的问题
+所以今天尝试了一个新的：Shaderlab-VS
+
+http://blog.shuiguzi.com/2015/12/27/ShaderlabVSFAQ/
