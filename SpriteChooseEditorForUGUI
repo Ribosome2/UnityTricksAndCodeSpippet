@@ -1,0 +1,224 @@
+using System;
+using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using UnityEditor;
+using UnityEngine.UI;
+public class SpriteChooseEditor : EditorWindow
+{
+    [MenuItem("Tools/UI/SpriteChooseWnd")]
+    public static void OpenChooseWnd()
+    {
+        GetWindow<SpriteChooseEditor>();
+    }
+
+
+    void OnEnable()
+    {
+        
+    }
+
+    
+
+    void OnGUI()
+    {
+        DrawSprites("Assets/Resources/atlas/Battle.png");
+    }
+   
+    private Vector2 scroll_pos = Vector2.zero;
+    private string select_ui_name;
+    private string cur_select_sprite_name;
+    private int SPRITE_LABEL_HEIGHT = 22;
+    private int SPRITE_SIZE = 100;
+    const int RIGHT_SCROLL_GAP = 10; //滚动条距离窗口右边框的距离
+
+    private string search_text = "";
+    void DrawSprites(string atlas_path)
+    {
+        GUILayout.BeginVertical();
+        GUILayout.Space(10);
+       
+        if (!File.Exists(atlas_path))
+            return;
+
+        UnityEngine.Object[] asset_list = AssetDatabase.LoadAllAssetRepresentationsAtPath(atlas_path);
+
+        List<Sprite> sprite_list = new List<Sprite>();
+        for (int index = 0; index < asset_list.Length; ++index)
+        {
+            Sprite handle_sprite = asset_list[index] as Sprite;
+            if (handle_sprite == null)
+                continue;
+            sprite_list.Add(handle_sprite);
+        }
+
+        int offset = (Screen.width - 190 - 218) / 2;
+        GUILayout.BeginHorizontal();
+        GUILayout.Space(offset);
+        string before = search_text;
+        string after = EditorGUILayout.TextField("", before, "SearchTextField", GUILayout.Width(200f));
+        if (before != after) search_text = after;
+
+        if (GUILayout.Button("", "SearchCancelButton", GUILayout.Width(18f)))
+        {
+            search_text = "";
+            GUIUtility.keyboardControl = 0;
+        }
+        GUILayout.Space(offset);
+        GUILayout.EndHorizontal();
+
+        List<Sprite> show_sprite_list = GetListOfSprites(sprite_list, search_text);
+
+        GUILayout.Space(10);
+
+        scroll_pos = GUILayout.BeginScrollView(scroll_pos, GUILayout.Width(Screen.width - RIGHT_SCROLL_GAP));
+
+        int col_show_count = (Screen.width - RIGHT_SCROLL_GAP) / (SPRITE_SIZE + 10);
+
+        int total_count = show_sprite_list.Count;
+        int row_index = 0;
+        for (int sprite_index = 0; sprite_index < total_count; )
+        {
+            GUILayout.BeginHorizontal();
+            for (int col_index = 0; col_index < col_show_count && sprite_index < total_count; ++col_index)
+            {
+                DrawSprite(row_index, col_index, show_sprite_list[sprite_index]);
+                ++sprite_index;
+            }
+            GUILayout.EndHorizontal();
+            row_index++;
+        }
+
+        GUILayout.Space(row_index * (SPRITE_SIZE + SPRITE_LABEL_HEIGHT + 2));
+
+        GUILayout.EndScrollView();
+
+        GUILayout.Space(10);
+        GUILayout.EndVertical();
+    }
+
+    void DrawSprite(int row_index, int col_index, Sprite sprite)
+    {
+
+        Texture2D handle_texture = sprite.texture;
+        GUILayout.BeginVertical();
+
+        Rect uv = new Rect(sprite.rect.x / handle_texture.width, sprite.rect.y / handle_texture.height,
+                           sprite.rect.width / handle_texture.width, sprite.rect.height / handle_texture.height);
+        Rect draw_rect = new Rect(col_index * (SPRITE_SIZE + 10), row_index * (SPRITE_SIZE + SPRITE_LABEL_HEIGHT + 2), SPRITE_SIZE, SPRITE_SIZE);
+
+        GUI.backgroundColor = new Color(.6f, 1.0f, 1.0f, 0.5f);
+        if (GUI.Button(draw_rect, ""))
+        {
+
+            cur_select_sprite_name = sprite.name;
+            foreach (GameObject handle_object in Selection.gameObjects)
+            {
+                Image handle_image = handle_object.GetComponent<Image>();
+                if (handle_image == null)
+                    continue;
+                handle_image.sprite = sprite;
+
+                string image_path = AssetDatabase.GetAssetPath(handle_image.sprite);
+                string handle_path = Path.GetDirectoryName(image_path);
+                string handle_name = Path.GetFileNameWithoutExtension(image_path);
+                //string mat_name = CommonEditUtil.CombinePath(handle_path, handle_name + "Mat.mat");
+                //handle_image.material = AssetDatabase.LoadAssetAtPath<Material>(mat_name);
+
+                //				RectTransform handle_rect = handle_object.GetComponent<RectTransform>();
+                //				handle_rect.sizeDelta = sprite.rect.size;
+
+                EditorUtility.SetDirty(handle_object);
+            }
+        }
+        GUI.backgroundColor = Color.white;
+
+        if (cur_select_sprite_name == sprite.name)
+            DrawRectOutline(draw_rect, Color.green);
+
+        float scale = sprite.rect.width / sprite.rect.height;
+        float sprite_width = sprite.rect.width;
+        float sprite_height = sprite.rect.height;
+
+        if (sprite_width < sprite_height)
+        {
+            draw_rect.height = SPRITE_SIZE;
+            draw_rect.width = SPRITE_SIZE * scale;
+            draw_rect.x += (SPRITE_SIZE - draw_rect.width) / 2;
+        }
+        else
+        {
+            draw_rect.width = SPRITE_SIZE;
+            draw_rect.height = SPRITE_SIZE / scale;
+            draw_rect.y += (SPRITE_SIZE - draw_rect.height) / 2;
+        }
+
+        GUI.DrawTextureWithTexCoords(draw_rect, handle_texture, uv);
+
+        GUI.Label(new Rect(col_index * (SPRITE_SIZE + 10), row_index * (SPRITE_SIZE + SPRITE_LABEL_HEIGHT + 2) + SPRITE_SIZE + 2, SPRITE_SIZE, SPRITE_LABEL_HEIGHT), sprite.name, "ProgressBarBack");
+
+        GUILayout.EndVertical();
+
+    }
+
+    static public void DrawRectOutline(Rect rect, Color color)
+    {
+        if (Event.current.type == EventType.Repaint)
+        {
+            Texture2D tex = EditorGUIUtility.whiteTexture;
+            GUI.color = color;
+            GUI.DrawTexture(new Rect(rect.xMin, rect.yMin, 1f, rect.height), tex);
+            GUI.DrawTexture(new Rect(rect.xMax, rect.yMin, 1f, rect.height), tex);
+            GUI.DrawTexture(new Rect(rect.xMin, rect.yMin, rect.width, 1f), tex);
+            GUI.DrawTexture(new Rect(rect.xMin, rect.yMax, rect.width, 1f), tex);
+            GUI.color = Color.white;
+        }
+    }
+
+    List<Sprite> GetListOfSprites(List<Sprite> sprite_list, string match)
+    {
+        if (string.IsNullOrEmpty(match)) return sprite_list;
+
+        List<Sprite> list = new List<Sprite>();
+
+        // First try to find an exact match
+        for (int i = 0, imax = sprite_list.Count; i < imax; ++i)
+        {
+            Sprite s = sprite_list[i];
+
+            if (s != null && !string.IsNullOrEmpty(s.name) && string.Equals(match, s.name, StringComparison.OrdinalIgnoreCase))
+            {
+                list.Add(s);
+                return list;
+            }
+        }
+
+        // No exact match found? Split up the search into space-separated components.
+        string[] keywords = match.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < keywords.Length; ++i) keywords[i] = keywords[i].ToLower();
+
+        // Try to find all sprites where all keywords are present
+        for (int i = 0, imax = sprite_list.Count; i < imax; ++i)
+        {
+            Sprite s = sprite_list[i];
+
+            if (s != null && !string.IsNullOrEmpty(s.name))
+            {
+                string tl = s.name.ToLower();
+                int matches = 0;
+
+                for (int b = 0; b < keywords.Length; ++b)
+                {
+                    if (tl.Contains(keywords[b])) ++matches;
+                }
+                if (matches == keywords.Length) list.Add(s);
+            }
+        }
+        return list;
+    }
+
+  
+
+}
