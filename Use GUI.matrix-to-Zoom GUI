@@ -1,0 +1,98 @@
+using UnityEngine;
+using System.Collections;
+public class GUIZoomTest : MonoBehaviour
+{
+    
+    Rect drawRect = new Rect(0, 0, 600, 600);
+    public float zoomScale = 1;
+    public float ZoomSensitivity = 100;
+    public Vector3 mousePos;
+    public Vector2 mGraphOffset;
+    public  Vector2 mGraphScrollPosition ;
+    public Vector2 mCurrentMousePosition;
+    void OnGUI()
+    {
+        BeginScaleUI(drawRect, zoomScale);
+
+        GUI.Button(OffSetRect(new Rect(200, 200, 100, 50)), "Test");
+        GUI.Label(OffSetRect(new Rect(400, 400, 80, 80)), "SomeSth");
+        GUI.Label(new Rect( 500,500,300,100),"some thing outside drawRect,");
+
+        EndScaleUI();
+
+        GUI.Button(new Rect(200, 200, 100, 50), "Normal button");
+
+        mCurrentMousePosition = Event.current.mousePosition;
+        if (Event.current.type == EventType.ScrollWheel)
+        {
+            Vector2 mousePosition1;
+            //zoom with current mouse position as focus
+            if (GetMousePosInScaleRect(out mousePosition1))
+            {
+                zoomScale -= Event.current.delta.y / ZoomSensitivity;
+                zoomScale = Mathf.Clamp(zoomScale, 0.1f, 10);
+                Vector2 mousePosition2;
+                GetMousePosInScaleRect(out mousePosition2);
+                mGraphOffset += mousePosition2 - mousePosition1;
+                
+            }
+        }
+    }
+
+
+    Rect OffSetRect(Rect srcRect)
+    {
+        return new Rect(srcRect.x + mGraphOffset.x, srcRect.y + mGraphOffset.y,srcRect.width,srcRect.height);
+    }
+
+    private bool GetMousePosInScaleRect(out Vector2 mousePosition)
+    {
+        mousePosition = this.mCurrentMousePosition;
+        if (!drawRect.Contains(mousePosition))
+            return false;
+        mousePosition -= new Vector2(this.drawRect.xMin, this.drawRect.yMin);
+        mousePosition /= this.zoomScale;
+        return true;
+    }
+    private static Matrix4x4 tempGuiMatrix;
+
+    public static Rect BeginScaleUI(Rect screenCoordsArea, float zoomScale)
+    {
+        
+        Rect rect = ScaleSizeBy(screenCoordsArea, 1f / zoomScale, TopLeft(screenCoordsArea));
+
+        GUI.BeginGroup(rect);
+        tempGuiMatrix = GUI.matrix;
+        Matrix4x4 matrix4x4_1 = Matrix4x4.TRS((Vector3)TopLeft(rect), Quaternion.identity, Vector3.one);
+        Matrix4x4 matrix4x4_2 = Matrix4x4.Scale(new Vector3(zoomScale, zoomScale, 1f));
+        GUI.matrix = matrix4x4_1 * matrix4x4_2 * matrix4x4_1.inverse * GUI.matrix;
+        return rect;
+    }
+
+    public static Rect ScaleSizeBy(Rect rect, float scale, Vector2 pivotPoint)
+    {
+        Rect rect1 = rect;
+        rect1.x -= pivotPoint.x;
+        rect1.y -= pivotPoint.y;
+        rect1.xMin *= scale;
+        rect1.xMax *= scale;
+        rect1.yMin *= scale;
+        rect1.yMax *= scale;
+        rect1.x += pivotPoint.x;
+        rect1.y += pivotPoint.y;
+        return rect1;
+    }
+
+
+    public static Vector2 TopLeft(Rect rect)
+    {
+        return new Vector2(rect.xMin, rect.yMin);
+    }
+
+    public static void EndScaleUI()
+    {
+        GUI.matrix = tempGuiMatrix;
+        GUI.EndGroup();
+    }
+
+}
