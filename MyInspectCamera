@@ -1,0 +1,83 @@
+using UnityEngine;
+using System.Collections;
+public class MyInspectCamera : MonoBehaviour {
+    public Transform target;
+    public Transform CamTransform;
+    public float distance = 10.0f;
+    public float minDistance = 2;
+    public float maxDistance = 20;
+    public float xSpeed = 250.0f;
+    public float ySpeed = 120.0f;
+    public float yMinLimit = 2f;
+    public float yMaxLimit = 80.0f;
+    private float x = 23.0f;  //初始时候的欧拉角， 随便设ge
+    private float y = 6.0f;
+    public float zoomInLimit = 2.0f;
+    public float zoomOutLimit = 1.0f;
+    public float yOffset = 0; //目标在屏幕上Y坐标的偏移
+    public LayerMask ignoreLayer; //射线检测要忽略的层
+    private float lastClearTime;  //记录上次没遮挡的时间
+    void Start()
+    {
+        Vector3 dir = (CamTransform.position-target.position  ).normalized;
+        CamTransform.position = dir * distance + target.position;
+        CamTransform.LookAt(target.position);
+        Vector3 angles = CamTransform.eulerAngles;
+        x = angles.y;
+        y = angles.x;
+   
+        if (target == null)
+            target = GameObject.FindGameObjectWithTag("Player").transform;
+        if (CamTransform == null)
+            CamTransform = transform; // 这个主要 是给摄像机使用的
+    }
+    void LateUpdate()
+    {
+        if (Input.GetMouseButton(1))  //按下右键才旋转视角
+        {
+            x += Input.GetAxis("Mouse X") * xSpeed * 0.02f;
+            y -= Input.GetAxis("Mouse Y") * ySpeed * 0.02f;
+            y = ClampAngle(y, yMinLimit, yMaxLimit);
+        }
+        Quaternion rotation = Quaternion.Euler(y, x, 0);
+        Vector3 TargetPos = rotation * new Vector3(0.0f, yOffset, -distance) + target.position;
+        CamTransform.rotation = rotation;
+        RaycastHit castInfo;
+        LayerMask mask=~(ignoreLayer);
+        Debug.DrawLine(target.position, TargetPos, Color.red);
+       if (Physics.Linecast(target.position, TargetPos, out castInfo,mask)) //在摄像机当前坐标和目标点之间进行障碍物检测， 要是中间有障碍物就，只移动到离障碍物稍偏一点位置
+       {
+          // if (Time.time - lastClearTime > 0.5f) //遮挡超过一定时间才跳
+           {
+               Vector3 dir = (TargetPos - CamTransform.position).normalized;
+               Vector3 targerPoint = castInfo.point - dir * 0.5f;
+               CamTransform.position = Vector3.Lerp(CamTransform.position, targerPoint,Time.deltaTime*3);
+           }    
+        }
+        else
+       {
+            CamTransform.position = TargetPos;
+            lastClearTime = Time.time;
+        }
+        #region 滚轮缩放
+       float scrollValue = Input.GetAxis("Mouse ScrollWheel");
+        //拉近距离的方式
+       if (scrollValue != 0)
+       {
+           distance -= scrollValue;
+           distance = Mathf.Clamp(distance, minDistance, maxDistance);
+       }
+        #endregion 滚轮缩放
+                      
+      
+    }
+   
+    static float ClampAngle(float angle, float min, float max)
+    {
+        if (angle < -360.0f)
+            angle += 360.0f;
+        if (angle > 360.0f)
+            angle -= 360.0f;
+        return Mathf.Clamp(angle, min, max);
+    }
+}
