@@ -1,0 +1,78 @@
+using UnityEngine;
+using System.Collections;
+
+public enum eMissilePhase
+{
+    MoveForward,
+    MoveOnCircle,
+    ChaseTarget,
+}
+public class MissileTest : MonoBehaviour
+{
+    public float Radius = 5;
+    public Transform bullet;
+    public Transform target;
+    public Vector3 OriginPos;
+    public float speed = 3;
+    public float distance;
+
+    private eMissilePhase mState=eMissilePhase.MoveForward;
+    public float ForwardTime = 1;
+    private float mCurForwardTime = 0;
+    public float angle;
+    public float turnSpeed = 3;
+	// Use this for initialization
+	void Start () {
+	
+	}
+	
+	// Update is called once per frame
+	void Update ()
+	{
+
+	    if (mState == eMissilePhase.MoveForward)
+	    {
+	        Vector3 dir = Vector3.right;
+	        bullet.position += dir*Time.deltaTime*speed;
+	        bullet.rotation = Quaternion.LookRotation(dir, Vector3.up);
+	        mCurForwardTime += Time.deltaTime;
+	        if (mCurForwardTime >= ForwardTime)
+	        {
+	            mState=eMissilePhase.MoveOnCircle;
+	            OriginPos = bullet.position + Vector3.up*Radius;
+	        }
+
+	    }else if (mState == eMissilePhase.MoveOnCircle)
+	    {
+	        distance += Time.deltaTime*speed;
+	        angle = (0.5f*distance/Radius);
+	        Vector3 targetPos = Vector3.zero;
+	        targetPos.x = Mathf.Sin(angle)*Radius;
+	        targetPos.y = -Mathf.Cos(angle)*Radius;
+            targetPos=OriginPos+ targetPos;
+	        bullet.position = targetPos;
+            //忽略Z  轴， 所以可以这样算出圆上点的切线方向
+	        Vector3 tangentDir = Vector3.Cross(Vector3.forward, (targetPos - OriginPos).normalized);
+            bullet.rotation = Quaternion.LookRotation(tangentDir, Vector3.forward);
+	        if (angle >= Mathf.PI)
+	        {
+	            mState=eMissilePhase.ChaseTarget;
+	        }
+	    }
+	    else
+	    {
+            Quaternion newRotation = Quaternion.LookRotation(target.position - bullet.position, Vector3.up);
+            bullet.rotation = Quaternion.Slerp(bullet.rotation, newRotation, Time.deltaTime * turnSpeed);
+
+//	        Vector3 dir = (target.position - bullet.position).normalized;
+            Vector3 dir = bullet.forward;
+	        bullet.position += dir*speed*Time.deltaTime;
+          
+
+	    }
+	}
+
+
+
+   
+}
