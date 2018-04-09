@@ -1,0 +1,64 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class DropItemTest : MonoBehaviour {
+    public Transform itemObj;
+    public Transform target;
+    public float distance;
+    public float speed = 1;
+    public float radius = 5;
+    public Vector3 direction=Vector3.left;
+    public Vector3 circleInitPos;
+
+    public bool MovingCircle=true;
+    public float MaxCircleAngle;
+    public Vector3 curDir;
+    public float angelLerp;
+    public float angelLerpSpeed=0.05f;
+
+    void OnEnable () {
+        direction = Random.onUnitSphere;
+        direction.y = 0;
+        if(direction.x==0 && direction.z==0)
+        {
+            direction.x = 1;
+        }
+        direction = direction.normalized;
+        radius = Random.Range(5, 10);
+        circleInitPos = Vector3.zero;
+        MovingCircle = true;
+        MaxCircleAngle = Random.Range(0.2f, 2) * Mathf.PI;
+        distance = 0;
+        angelLerp = 0;
+    }
+	
+	// Update is called once per frame
+	void Update () {
+        if(MovingCircle)
+        {
+            distance += Time.deltaTime * speed;
+            float angle = distance / radius;
+            if (angle > MaxCircleAngle)
+            {
+                angle = MaxCircleAngle;
+                MovingCircle = false;
+            }
+            float forwardOffSet = radius * Mathf.Sin(angle);
+            float heightOffset = radius - radius * Mathf.Cos(angle);
+            Vector3 nextPos= circleInitPos + direction * forwardOffSet + Vector3.up * heightOffset;
+            curDir = (nextPos - itemObj.position).normalized;
+            itemObj.position = nextPos;
+        }
+        else
+        {
+            if(Vector3.Distance(itemObj.position,target.position)>0.5f)
+            {
+                Vector3 targetDir = (target.position - itemObj.position).normalized;
+                angelLerp += angelLerpSpeed;
+                Vector3 moveDir = Vector3.Lerp(curDir, targetDir, angelLerp).normalized;
+                itemObj.position += moveDir * speed * Time.deltaTime;
+            }
+        }
+	}
+}
