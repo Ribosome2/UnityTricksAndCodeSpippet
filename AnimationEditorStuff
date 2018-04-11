@@ -1,0 +1,36 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEditor;
+using UnityEngine;
+[ExecuteInEditMode]
+public class AnimTest : MonoBehaviour {
+    [Range(0,2)]
+    public float animTime = 0;
+
+    public AnimationClip animState;
+    public bool AutoPlay;
+    private float mLastTime = 0;
+    private float mDeltaTime = 0;
+
+	// Update is called once per frame
+	void Update () {
+        mDeltaTime = (float)EditorApplication.timeSinceStartup - mLastTime;
+		mLastTime = (float)EditorApplication.timeSinceStartup;
+
+	    if (animState)
+	    {
+	        if (AutoPlay)
+	        {
+	            animTime += mDeltaTime;
+	            if (animTime > animState.length)
+	            {
+	                animTime = 0;
+	            }
+	        }
+            //AnimationClip 指定目标GameObject取样
+            animState.SampleAnimation(gameObject, animTime);
+	    }
+       
+        
+	}
+}
