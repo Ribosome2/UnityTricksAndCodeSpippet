@@ -1,0 +1,105 @@
+using UnityEngine;
+using System.Collections;
+
+public class MatrixTest : MonoBehaviour
+{
+    public Transform target;
+    public Vector3 relativePos;
+
+    public Matrix4x4 matrix = new Matrix4x4();
+    MatrixHelper maxtrixHelper = new MatrixHelper();
+    void Start()
+    {
+        
+    }
+
+    void Update()
+    {
+        matrix.SetColumn(0, transform.right);
+        matrix.SetColumn(1, transform.up);
+        matrix.SetColumn(2, transform.forward);
+        Vector3 p = transform.position;
+        matrix.SetColumn(3, new Vector4(p.x, p.y, p.z, 1));
+        if (target)
+        {
+            maxtrixHelper.position = transform.position;
+            maxtrixHelper.rotation = transform.eulerAngles;
+            maxtrixHelper.Apply();
+
+//            relativePos = transform.worldToLocalMatrix.MultiplyPoint3x4(target.position);
+            relativePos = maxtrixHelper.worldToLocalMatrix.MultiplyPoint(target.position);
+        }
+       
+        
+    }
+
+
+    public class  MatrixHelper
+    {
+        public Vector3 position;
+        public Vector3 rotation;
+        public Matrix4x4 worldToLocalMatrix;
+        public Matrix4x4 localToWorldMatrix;
+        public Matrix4x4 PositionMatrix
+        {
+            get
+            {
+                Matrix4x4 matrix = new Matrix4x4();
+                matrix.SetRow(0, new Vector4(1f, 0f, 0f, position.x));
+                matrix.SetRow(1, new Vector4(0f, 1f, 0f, position.y));
+                matrix.SetRow(2, new Vector4(0f, 0f, 1f, position.z));
+                matrix.SetRow(3, new Vector4(0f, 0f, 0f, 1f));
+                return matrix;
+            }
+        }
+   
+        public Matrix4x4 RotationMatrix
+        {
+            get
+            {
+                float radX = rotation.x * Mathf.Deg2Rad;
+                float radY = rotation.y * Mathf.Deg2Rad;
+                float radZ = rotation.z * Mathf.Deg2Rad;
+                float sinX = Mathf.Sin(radX);
+                float cosX = Mathf.Cos(radX);
+                float sinY = Mathf.Sin(radY);
+                float cosY = Mathf.Cos(radY);
+                float sinZ = Mathf.Sin(radZ);
+                float cosZ = Mathf.Cos(radZ);
+
+                Matrix4x4 matrix = new Matrix4x4();
+                matrix.SetColumn(0, new Vector4(
+                    cosY * cosZ,
+                    cosX * sinZ + sinX * sinY * cosZ,
+                    sinX * sinZ - cosX * sinY * cosZ,
+                    0f
+                ));
+                matrix.SetColumn(1, new Vector4(
+                    -cosY * sinZ,
+                    cosX * cosZ - sinX * sinY * sinZ,
+                    sinX * cosZ + cosX * sinY * sinZ,
+                    0f
+                ));
+                matrix.SetColumn(2, new Vector4(
+                    sinY,
+                    -sinX * cosY,
+                    cosX * cosY,
+                    0f
+                ));
+                matrix.SetColumn(3, new Vector4(0f, 0f, 0f, 1f));
+                return matrix;
+            }
+        }
+
+        public void Apply()
+        {
+            localToWorldMatrix =RotationMatrix*PositionMatrix;
+            worldToLocalMatrix = localToWorldMatrix.inverse;
+        }
+
+       
+
+      
+    }
+}
+//Codes from http://catlikecoding.com/unity/tutorials/rendering/part-1/
