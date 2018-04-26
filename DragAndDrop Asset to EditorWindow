@@ -1,0 +1,31 @@
+ void OnGUI()
+    {
+
+  var editId=EditorGUILayout.IntField(fx.res, GUILayout.Width(100));
+  var inputRect = GUILayoutUtility.GetLastRect();
+  if (inputRect.Contains(Event.current.mousePosition))
+  {
+      var eventType = Event.current.type;
+      if (eventType == EventType.DragUpdated || eventType == EventType.DragPerform)
+      {
+          // Show a copy icon on the drag
+          DragAndDrop.visualMode = DragAndDropVisualMode.Copy;
+
+          if (eventType == EventType.DragPerform)
+          {
+              var objs = DragAndDrop.objectReferences;
+              if (objs != null && objs.Length > 0)
+              {
+                  int dropId;
+                  if (int.TryParse(objs[0].name, out dropId))
+                  {
+                      editId = dropId;
+                  }
+                  DragAndDrop.AcceptDrag();
+              }
+          }
+
+          Event.current.Use();
+      }
+  }
+}
