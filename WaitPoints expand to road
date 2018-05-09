@@ -1,0 +1,112 @@
+using UnityEngine;
+using System.Collections;
+using UnityEditor;
+
+public class LineTest : MonoBehaviour
+{
+    public Vector3[] lines;
+    public float lineGap=1;
+
+    /// <summary>
+    /// 思路：假设路宽半径R,比如A-B-C 三点，要知道B点的另外两条线的对应点，只要知道AB和BC之间的角度n,
+    /// 就知道左边线要比路中间线的的AB正常点按AB方向伸长 D= R*Tan(n) 右边线要缩短D，其中R可能是整数或者负数
+    /// </summary>
+    void OnDrawGizmos()
+    {
+        
+        Vector3[] line1 = new Vector3[lines.Length];
+        Vector3[] line2 = new Vector3[lines.Length];
+        float[] turnPointMap = new float[lines.Length];
+
+        for (int i = 1; i < lines.Length; i++)
+        {
+            Vector3 dir = (lines[i] - lines[i - 1]);
+            dir = dir.normalized;
+            Vector3 offSetDir = Vector3.Cross(dir, Vector3.up).normalized;
+            Gizmos.color = Color.red;
+            Gizmos.DrawLine(lines[i], lines[i] + offSetDir*lineGap);
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawLine(lines[i], lines[i] - offSetDir * lineGap);
+         
+
+            line1[i] = lines[i ] + offSetDir * lineGap;
+            line2[i] = lines[i ] - offSetDir * lineGap;
+            if (i>=1 && i <= (lines.Length - 2)) //不是最后一点，说明是当前点是有前后两点的
+            {
+                Vector3 dirToNext = lines[i+1] - lines[i];
+                Vector3 dirToPrev = lines[i] - lines[i - 1];
+                float changeAngle =Mathf.Deg2Rad*Vector3.Angle(dirToNext, dirToPrev)/2; //算出下个方向和前一个方向偏了多少角度
+
+                Vector3 prevOffSetDir = Vector3.Cross(dirToPrev, Vector3.up).normalized;
+                Plane plane = new Plane(prevOffSetDir, lines[i-1]);
+                bool clockWise = (plane.GetSide(lines[i+1]));
+
+                if (clockWise)
+                {
+                    turnPointMap[i] = changeAngle;
+                }
+                else
+                {
+                    turnPointMap[i] = -changeAngle;
+                }
+               
+                float offsetDist = Mathf.Tan(changeAngle)*lineGap;
+                Vector3 nextDir = (lines[i + 1] - lines[i]);
+                float nextDist = nextDir.magnitude;
+                nextDir = nextDir.normalized;
+                Vector3 nextOffSetDir = Vector3.Cross(nextDir, Vector3.up).normalized;
+                Vector3 nextPoint1 = lines[i+1] + nextOffSetDir * lineGap;
+                Vector3 nextPoint2 = lines[i+1] - nextOffSetDir * lineGap;
+
+
+                if (!clockWise)
+                {
+                    line1[i] = nextPoint1 - nextDir*(nextDist + offsetDist);
+                    line2[i] = nextPoint2 - nextDir*(nextDist - offsetDist);
+                }
+                else
+                {
+                    line1[i] = nextPoint1 - nextDir * (nextDist - offsetDist);
+                    line2[i] = nextPoint2 - nextDir * (nextDist + offsetDist);
+                }
+
+            }
+
+            if (i == 1 || i == lines.Length)
+            {
+                line1[i - 1] = lines[i - 1] + offSetDir * lineGap;
+                line2[i - 1] = lines[i - 1] - offSetDir * lineGap;
+            }
+        }
+
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            
+            Gizmos.color = Color.blue;
+            Handles.Label(lines[i], "Point" + i+"角度"+turnPointMap[i]);
+            Gizmos.DrawWireSphere(lines[i], 0.3f);
+            if (i != 0)
+            {
+                Gizmos.DrawLine(lines[i], lines[i - 1]);
+            }
+        }
+
+        Gizmos.color = Color.green;
+        for (int i = 0; i < lines.Length; i++)
+        {
+
+
+            Gizmos.DrawWireSphere(line1[i], 0.2f);
+            Gizmos.DrawWireSphere(line2[i], 0.2f);
+            if (i != 0)
+            {
+                Gizmos.DrawLine(line1[i], line1[i - 1]);
+                Gizmos.DrawLine(line2[i], line2[i - 1]);
+            }
+        }
+    }
+
+    
+
+}
