@@ -103,3 +103,8 @@ public class MatrixTest : MonoBehaviour
     }
 }
 //Codes from http://catlikecoding.com/unity/tutorials/rendering/part-1/
+
+//也可以直接用Unity自带的这个简便来写
+//  Matrix4x4 matrix4X4=new Matrix4x4();
+//  matrix4X4.SetTRS(transform.position,Quaternion.LookRotation(transform.forward), Vector3.one);
+//  relativePos = matrix4X4.inverse.MultiplyPoint(target.position);
