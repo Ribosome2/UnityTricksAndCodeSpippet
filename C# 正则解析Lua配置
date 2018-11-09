@@ -1,0 +1,20 @@
+    public static Dictionary<string, string> FindKeyAndValueInStr(string strSrc)
+    {
+        //解析这样格式的并且把字段提取出来 [2041102]={IconPrefab=70400002,PVPaffectDesc="无",PVPattackFrequency=1.2,PVPhurtDesc="无",PVPshowUpEffects={3},
+        MatchCollection matches = Regex.Matches(strSrc, @"([a-zA-Z]+=.*?),");
+       Dictionary<string,string> dictKeyPair=new Dictionary<string, string>();
+        if (matches.Count > 0)
+        {
+            foreach (Match m in matches)
+            {
+                for (int i = 0; i < m.Groups.Count; i++)
+                {
+                    string strKV = m.Groups[i].Value.Replace(",", "");
+                    string[] kvR = strKV.Split('=');
+                    dictKeyPair.Add(kvR[0],kvR[1]);
+                }
+            }
+        }
+
+        return dictKeyPair;
+    }
