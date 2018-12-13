@@ -1,0 +1,109 @@
+using UnityEngine;
+using UnityEngine.Serialization;
+
+namespace AnimationOrTween
+{
+    [System.Serializable]
+    public class ChildLayoutConfig
+    {
+        public Vector3 Pos;
+        public Vector3 Rot;
+    }
+    /// <summary>
+    /// 子对象按照摆好的位置和朝向布局
+    /// </summary>
+    [ExecuteInEditMode]
+    public class CustomUILayout : MonoBehaviour
+    {
+        public ChildLayoutConfig[] ChildConfigs;
+        void Update()
+        {
+            UpdateLayout();
+        }
+        public void UpdateLayout()
+        {
+            if (ChildConfigs != null && ChildConfigs.Length > 0)
+            {
+                int Index = 0;
+                int childCount = transform.childCount;
+
+                for (int i = 0; i < childCount; i++)
+                {
+                    var child = transform.GetChild(i);
+                    if (Index >= ChildConfigs.Length)
+                    {
+                        break;
+                    }
+                    if (child.gameObject.activeSelf)
+                    {
+                        var config = ChildConfigs[Index];
+                        if (child.transform.localPosition != config.Pos)
+                        {
+                            child.transform.localPosition = config.Pos;
+                        }
+
+                        if (child.transform.localEulerAngles != config.Rot)
+                        {
+                            child.transform.localEulerAngles = config.Rot;
+                        }
+
+                        Index++;
+                    }
+                }
+            }
+            
+        }
+    }
+}
+
+
+using AnimationOrTween;
+using UnityEngine;
+using UnityEditor;
+
+[CustomEditor(typeof(CustomUILayout), true)]
+public class CustomLayoutEditor : Editor
+{
+    public override void OnInspectorGUI()
+    {
+        GUILayout.Space(6f);
+        CustomUILayout script = target as CustomUILayout;
+        base.OnInspectorGUI();
+       
+    }
+
+
+    void OnSceneGUI()
+    {
+        CustomUILayout script = target as CustomUILayout;
+        if (script)
+        {
+            for (int i = 0; i < script.ChildConfigs.Length; i++)
+            {
+                var config = script.ChildConfigs[i];
+                var worldPos = script.transform.TransformPoint(config.Pos);
+                var worldDir = script.transform.TransformVector(config.Rot);
+                Handles.Label(worldPos,"Child"+i);
+                var worldRotation = new Quaternion();
+                worldRotation.eulerAngles = worldDir;
+             
+                if (Tools.current == Tool.Move)
+                {
+                    config.Pos =script.transform.InverseTransformPoint(Handles.PositionHandle(worldPos, worldRotation));
+                }
+                else if(Tools.current==Tool.Rotate)
+                {
+                    config.Rot = script.transform.InverseTransformVector(Handles.RotationHandle(worldRotation, worldPos).eulerAngles);
+                }
+
+                if (GUI.changed)
+                {
+                    script.UpdateLayout();
+                }
+            }
+        }
+       
+    }
+ 
+}
+
