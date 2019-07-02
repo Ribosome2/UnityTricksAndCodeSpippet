@@ -1,0 +1,78 @@
+using System;
+using System.Linq;
+using UnityEngine;
+
+namespace Temp
+{
+    public class TestAnimationEvent : MonoBehaviour
+    {
+        [System.Serializable]
+        public class EventData
+        {
+            public string clipName;
+            public int maxFrame = 10;
+            public float time;
+            public string functionName="HelloKyle";
+            public string stringParameter;
+            public int intParameter;
+            public float floatParameter;
+            
+        }
+
+        public EventData[] configList;
+        public string clipName;
+        public Animator TargetAnimator;
+
+
+        private void Start()
+        {
+            SetEvent();
+        }
+
+        [ContextMenu("DoSetEvent")]
+        void SetEvent()
+        {
+            float frameRate;
+            var clips = TargetAnimator.runtimeAnimatorController.animationClips;
+            var targetClip = clips.First(clip => clip.name == clipName);
+            frameRate = targetClip.frameRate;
+            foreach (var eventData in configList)
+            {
+                AnimationEvent evt=new AnimationEvent()
+                {
+                        time = eventData.time/frameRate,
+                        functionName = eventData.functionName,
+                        stringParameter = eventData.stringParameter,
+                        intParameter = eventData.intParameter,
+                        floatParameter = eventData.floatParameter,
+                };
+                
+                targetClip.AddEvent(evt);
+            }
+        }
+
+        /// <summary>
+        /// 动画事件只会调用从上到下找到的第一个符合functionName的函数，
+        /// </summary>
+        /// <param name="e"></param>
+        void HelloKyle (AnimationEvent e)
+        {
+            Debug.LogError("AnimationEvent ");
+        }
+        
+        void HelloKyle(int data)
+        {
+            Debug.LogError("int data"+data);
+        }
+        void HelloKyle(float data)
+        {
+            Debug.LogError("float  data"+data);
+        }
+        void HelloKyle(string data)
+        {
+            Debug.LogError("string  data"+data);
+        }
+        
+       
+    }
+}
