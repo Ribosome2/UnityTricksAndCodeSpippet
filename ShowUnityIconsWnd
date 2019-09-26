@@ -22,6 +22,7 @@ class ShowUnityIconsWnd : EditorWindow
 	void GetBultinAsset()
 	{
 		dict.Clear();
+		builtInTexs.Clear();
 		var flags = BindingFlags.Static | BindingFlags.NonPublic;
 		var info = typeof(EditorGUIUtility).GetMethod("GetEditorAssetBundle", flags);
 		var bundle = info.Invoke(null, new object[0]) as AssetBundle;
@@ -45,32 +46,36 @@ class ShowUnityIconsWnd : EditorWindow
 		}
 	}
  
-	void OnEnable()
+	void Awake()
 	{
 		GetBultinAsset();
 	}
  
 	Vector2 scrollPos = Vector2.zero;
+	private const int LINE_HEIGHT = 40;
 	void OnGUI()
 	{
-		EditorGUILayout.BeginVertical();
 		search = EditorGUILayout.TextField("search ", search);
+		EditorGUILayout.Vector3Field("scrollPos",scrollPos);
 		scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
+		
 		for (int i = 0; i < builtInTexs.Count; i++)
 		{
 			var texture = builtInTexs[i];
+		
 			if (string.IsNullOrEmpty(search) == false && texture.name.Contains(search)==false)
 			{
 				continue;
 			}
+			
 			GUILayout.BeginHorizontal();
-			GUILayout.Box(texture,GUILayout.Width(40),GUILayout.Height(40));
+			GUILayout.Box(texture,GUILayout.Width(LINE_HEIGHT),GUILayout.Height(LINE_HEIGHT));
 			GUILayout.Label(texture.name);
 			GUILayout.EndHorizontal();
+		
 			
 //			EditorGUILayout.ObjectField(texture, typeof(Texture2D),GUILayout.Height(40));
 		}
 		EditorGUILayout.EndScrollView();
-		EditorGUILayout.EndVertical();
 	}
 }
