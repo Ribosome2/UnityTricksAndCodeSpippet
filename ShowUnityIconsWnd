@@ -1,0 +1,76 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+using UnityEngine;
+using UnityEditor;
+using System;
+using System.Linq;
+using System.Reflection;
+
+class ShowUnityIconsWnd : EditorWindow
+{
+	[MenuItem("Window/ShowUnityIcons")]
+	public static void ShowWindow()
+	{
+		EditorWindow.GetWindow(typeof(ShowUnityIconsWnd));
+	}
+
+	private string search = "UI";
+	List<Texture2D> builtInTexs = new List<Texture2D>();
+	Dictionary<Texture,bool>  dict= new Dictionary<Texture, bool>();
+	void GetBultinAsset()
+	{
+		dict.Clear();
+		var flags = BindingFlags.Static | BindingFlags.NonPublic;
+		var info = typeof(EditorGUIUtility).GetMethod("GetEditorAssetBundle", flags);
+		var bundle = info.Invoke(null, new object[0]) as AssetBundle;
+		UnityEngine.Object[] objs = bundle.LoadAllAssets<Texture>();
+		if (null != objs)
+		{
+			for (int i = 0; i < objs.Length; i++)
+			{
+				if (objs[i] is Texture2D)
+				{
+					var texture = objs[i] as Texture2D;
+					
+					if (!dict.ContainsKey(texture))
+					{
+						builtInTexs.Add(texture);
+						dict.Add(texture,true);
+					}
+					
+				}
+			}
+		}
+	}
+ 
+	void OnEnable()
+	{
+		GetBultinAsset();
+	}
+ 
+	Vector2 scrollPos = Vector2.zero;
+	void OnGUI()
+	{
+		EditorGUILayout.BeginVertical();
+		search = EditorGUILayout.TextField("search ", search);
+		scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
+		for (int i = 0; i < builtInTexs.Count; i++)
+		{
+			var texture = builtInTexs[i];
+			if (string.IsNullOrEmpty(search) == false && texture.name.Contains(search)==false)
+			{
+				continue;
+			}
+			GUILayout.BeginHorizontal();
+			GUILayout.Box(texture,GUILayout.Width(40),GUILayout.Height(40));
+			GUILayout.Label(texture.name);
+			GUILayout.EndHorizontal();
+			
+//			EditorGUILayout.ObjectField(texture, typeof(Texture2D),GUILayout.Height(40));
+		}
+		EditorGUILayout.EndScrollView();
+		EditorGUILayout.EndVertical();
+	}
+}
