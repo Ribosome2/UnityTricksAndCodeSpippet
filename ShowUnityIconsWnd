@@ -10,7 +10,7 @@ using System.Reflection;
 
 class ShowUnityIconsWnd : EditorWindow
 {
-	[MenuItem("Window/ShowUnityIcons")]
+	[MenuItem("Tools/ShowUnityBuildInIcons")]
 	public static void ShowWindow()
 	{
 		EditorWindow.GetWindow(typeof(ShowUnityIconsWnd));
@@ -55,10 +55,15 @@ class ShowUnityIconsWnd : EditorWindow
 	private const int LINE_HEIGHT = 40;
 	void OnGUI()
 	{
+		GUILayout.BeginHorizontal();
 		search = EditorGUILayout.TextField("search ", search);
 		EditorGUILayout.Vector3Field("scrollPos",scrollPos);
-		scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
+		GUILayout.EndHorizontal();
+		GUILayout.Label("TotalItem :  "+builtInTexs.Count);
 		
+		
+		scrollPos = EditorGUILayout.BeginScrollView(scrollPos);
+		int drawIndex = 0;
 		for (int i = 0; i < builtInTexs.Count; i++)
 		{
 			var texture = builtInTexs[i];
@@ -67,15 +72,38 @@ class ShowUnityIconsWnd : EditorWindow
 			{
 				continue;
 			}
-			
-			GUILayout.BeginHorizontal();
-			GUILayout.Box(texture,GUILayout.Width(LINE_HEIGHT),GUILayout.Height(LINE_HEIGHT));
-			GUILayout.Label(texture.name);
-			GUILayout.EndHorizontal();
-		
-			
-//			EditorGUILayout.ObjectField(texture, typeof(Texture2D),GUILayout.Height(40));
+
+			if (IsVisible(drawIndex))
+			{
+				GUILayout.BeginHorizontal();
+				GUILayout.Box(texture,GUILayout.Width(LINE_HEIGHT),GUILayout.Height(LINE_HEIGHT));
+				GUILayout.Label("Index: "+drawIndex,GUILayout.Width(100));
+				EditorGUILayout.TextField(texture.name);
+				EditorGUILayout.ObjectField(texture, typeof(Texture2D));
+				GUILayout.EndHorizontal();
+				
+			}
+			else
+			{
+				//those not visible item only need to take space 
+				GUILayout.Space(LINE_HEIGHT);
+			}
+			drawIndex++;
+
+
 		}
 		EditorGUILayout.EndScrollView();
 	}
+
+	bool IsVisible(int index)
+	{
+		var pos = index * LINE_HEIGHT;
+		if (pos >= scrollPos.y && pos < scrollPos.y + position.height)
+		{
+			return true;
+		}
+
+		return false;
+	}
 }
+
