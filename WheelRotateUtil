@@ -1,0 +1,88 @@
+WheelRotateAnimation = class("WheelRotateAnimation")
+-- s = v0 * t + (a * t^2) / 2
+-- a = (vt - v0) / t
+local minSpeed
+function WheelRotateAnimation:ctor( startAngle )
+    self.maxSpeed = 360
+    self.curSpeed =  0
+    self.curAngle =startAngle
+    self.accelerationSpeed= 0
+    self.isSpeedingUp =false
+    self.isSlowingDown =false
+    self.targetAngle =0
+    self.curDownTime = 0
+end
+
+function WheelRotateAnimation:SetMaxSpeedCallBack(callback)
+    self.maxSpeedCallBack =callback
+end
+
+function WheelRotateAnimation:SetStopCallBack(callback )
+    self.stopCallBack = callback
+end
+
+function WheelRotateAnimation:Start(startSpeed,accelerationSpeed)
+    self.isSpeedingUp = true
+    self.curSpeed =  startSpeed
+    self.accelerationSpeed= accelerationSpeed
+    self.isSlowingDown =false
+end
+
+function WheelRotateAnimation:Stop(targetAngle,slowDownTotalTime )
+    local offsetAngle =0
+    local curRealAngle = self:GetCurAngle()
+    if targetAngle> curRealAngle then
+        offsetAngle = targetAngle -curRealAngle
+    else
+        offsetAngle = 360 -(curRealAngle-targetAngle)
+    end
+    local totalDistance = 720 + offsetAngle
+    --根据上面公式，我们想要在指定的时间内停下来，需要的加速度为
+    self.accelerationSpeed = (2*totalDistance )/(slowDownTotalTime*slowDownTotalTime)
+    self.isSlowingDown =true
+    self.isSpeedingUp =false
+    self.targetAngle = self.curAngle + totalDistance
+    self.curDownTime =0
+    self.maxSlowTime = slowDownTotalTime
+end
+
+function WheelRotateAnimation:Update( deltaTime )
+    if self.isSpeedingUp then
+        self.curSpeed = self.curSpeed + self.accelerationSpeed*deltaTime
+        self.curSpeed = math.min(self.curSpeed,self.maxSpeed)
+        if self.curSpeed>= self.maxSpeed then
+            if self.maxSpeedCallBack then
+                self.maxSpeedCallBack()
+                self.maxSpeedCallBack =nil
+            end
+        end
+        if self.curSpeed>0 then
+            self.curAngle = self.curAngle + self.curSpeed * deltaTime
+        end
+    end
+
+    self:CheckSlowDown(deltaTime)
+end
+
+function WheelRotateAnimation:CheckSlowDown(deltaTime)
+    if self.isSlowingDown and self.curDownTime< self.maxSlowTime then
+        self.curDownTime = self.curDownTime +deltaTime
+        -- S =1/2 * a * t^2
+        local progressTime = self.maxSlowTime - self.curDownTime
+        self.slowDownDist = 0.5*self.accelerationSpeed*(progressTime*progressTime)
+        self.curAngle = self.targetAngle - self.slowDownDist
+        if self.curDownTime >= self.maxSlowTime then
+            self.isSlowingDown=false
+            self.curAngle = self.targetAngle
+            if self.stopCallBack then
+                self.stopCallBack()
+                self.stopCallBack = nil
+            end
+        end
+    end
+end
+
+--显示用的角度，只要0-360内
+function WheelRotateAnimation:GetCurAngle()
+    return math.floor(self.curAngle % 360)
+end
