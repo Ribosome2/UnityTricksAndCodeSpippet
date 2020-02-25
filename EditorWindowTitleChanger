@@ -1,0 +1,43 @@
+using System.Collections;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Text;
+using UnityEngine;
+using  UnityEditor;
+#if UNITY_EDITOR_WIN
+[InitializeOnLoad]
+public static class EditorWindowTitleChanger{
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowText")]
+    public static extern bool SetWindowText(System.IntPtr hwnd, System.String lpString);
+
+    [DllImport("user32.dll")]
+
+    static extern int GetWindowText(System.IntPtr hWnd, StringBuilder text, int count);
+
+    [DllImport("user32.dll")]
+    private static extern System.IntPtr GetActiveWindow();
+
+    public static System.IntPtr GetWindowHandle()
+    {
+        return GetActiveWindow();
+		
+	}
+     static EditorWindowTitleChanger()
+    {
+        //Get the window handle.
+        var windowPtr = GetActiveWindow();
+        var customTitle = Application.dataPath;
+        var sb = new StringBuilder(200);
+        GetWindowText(windowPtr,sb,200);
+        var oldTitle = sb.ToString();
+        Debug.Log("Change:2   "+oldTitle);
+        if (!oldTitle.Contains("|"))
+        {
+            customTitle = oldTitle + " | " + customTitle;
+            //Set the title text using the window handle.
+            SetWindowText(windowPtr, customTitle);
+        }
+    }
+}
+#endif
