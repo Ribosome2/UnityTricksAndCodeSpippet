@@ -1,0 +1,15 @@
+2020-5-18
+看过《cleanCode》之后一直就想尝试一下TDD 对开发过程能产生多少好处，
+趁今天有空，尝试在IDEA里面建立一个沙盒环境，直接运行自己写的一些测试代码，
+
+本来以为很简单，一天内能搞完，但是发现很多知识盲点和很多坑，这里记录下，学到的新的知识点
+1.首先，建立的unitTest 的目录肯定是跟Unity的工程目录没关系的，所以，必须要require工程的代码，什么是最方便的方式把项目里的代码拿来用呢
+当然是可以希望可以直接复制粘贴 项目的里面的require代码就可以用了， 要做的这一点，可以自己lua的全局变量增加搜索路径，
+比如，在入口函数，调用以下代码：
+local appendSearchPath= function(path)
+    package.path = package.path..path
+end
+appendSearchPath(';C:/game-client/UnityProj/Assets/Scripts/Lua/logic/?.lua') --这里暂时写绝对路径
+知识点就pakage.path: 是lua会在每个;分割的路径配置里面用 require(arg)里的arg 替换掉问号尝试搜索
+
+
