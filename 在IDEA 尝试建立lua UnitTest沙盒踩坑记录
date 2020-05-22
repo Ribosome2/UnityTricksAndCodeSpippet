@@ -10,6 +10,8 @@ local appendSearchPath= function(path)
     package.path = package.path..path
 end
 appendSearchPath(';C:/game-client/UnityProj/Assets/Scripts/Lua/logic/?.lua') --这里暂时写绝对路径
+也可以写相对路径 appendSearchPath(';../../Assets/Scripts/Lua/logic/?.lua')  
+其中“../”代表的是上一层目录
 知识点就pakage.path: 是lua会在每个;分割的路径配置里面用 require(arg)里的arg 替换掉问号尝试搜索
 
 2.在IDEA里面 运行的LuaApplication 里require Utf-8-Bom 编码的代码直接报错，一种解决办法是把格式换成Utf-8 
