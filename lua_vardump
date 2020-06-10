@@ -31,3 +31,45 @@ function vardump(value, depth, key)
          print(spaces..linePrefix.."("..type(value)..") "..tostring(value))
      end
  end
+ 
+ --use this to get a log to console or save to file ,no print
+ function GetVarDump(value, depth, key)
+     local indentSymbol ="\t"
+     local contentStr = ""
+     local addContent=function(str ,makeNewLine)
+         if str~=nil and str ~='' then
+             contentStr =string.format('%s%s', contentStr,tostring(str))
+         end
+     end
+
+     local linePrefix = ""
+     local indent = ""
+     if key ~= nil then
+         linePrefix = key.." = "
+     end
+     if depth == nil then
+         depth = 0
+     else
+         depth = depth + 1
+         for i=1, depth do indent = indent .. indentSymbol end
+     end
+     if type(value) == 'table' then
+          local mTable = getmetatable(value)
+         if mTable == nil then
+             addContent(string.format('%s%s(table)\n%s{',indent ,linePrefix,indent,indent))
+         else
+             addContent(indent .."(metatable) ")
+             value = mTable
+         end
+         for tableKey, tableValue in pairs(value) do
+             local content  = GetVarDump(tableValue, depth, tableKey)
+             addContent('\n'..content)
+         end
+         addContent('\n'..indent ..'}')
+     elseif type(value) == 'function' or type(value) == 'thread' or type(value) == 'userdata'  or value == nil     then
+         addContent(indent..tostring(value))
+     else
+         addContent(indent..linePrefix..tostring(value).." ("..type(value)..") ")
+     end
+     return contentStr
+ end
