@@ -1,0 +1,160 @@
+local descriptor = require "protobuf.descriptor"
+local M = {}
+KyleProtoFmt = M
+local FieldDescriptor = descriptor.FieldDescriptor
+local indentSymbol ="\t"
+function Msg_Format_Indent(write, msg, indent)
+    local makeIndent =function()
+        write(string.rep(indentSymbol, indent))
+    end
+
+    for field, value in msg:ListFields() do
+        local print_field = function(field_value, isRepeated,fieldIndent)
+            local name = field.name
+            makeIndent(fieldIndent)
+            if field.type == FieldDescriptor.TYPE_MESSAGE then
+                local extensions = getmetatable(msg)._extensions_by_name
+                if extensions[field.full_name] then
+                    write("[" .. name .. "] {\n")
+                else
+                    if isRepeated then
+                        write("{\n")
+                    else
+                        write(name .. "={\n")
+                    end
+                end
+                Msg_Format_Indent(write, field_value, indent + 1)
+                makeIndent(fieldIndent)
+                write("}\n")
+            else
+                if type(field_value) == 'string' then
+                    write(string.format("%s = \' %s\n'", name, tostring(field_value)))
+                else
+                    write(string.format("%s = %s\n", name, tostring(field_value)))
+                end
+            end
+        end
+        if field.label == FieldDescriptor.LABEL_REPEATED then
+            local name = field.name
+            makeIndent(indent+1)
+            write(name .. "={\n")
+            for _, k in ipairs(value) do
+                print_field(k, true,indent+1)
+            end
+            makeIndent(indent)
+            write("},\n")
+        else
+            print_field(value, false,indent+1)
+        end
+    end
+
+end
+
+
+function M.Format(msg,indent)
+    if indent==nil then
+        indent=1
+    end
+    local out = {}
+    local write = function(value)
+        out[#out + 1] = value
+    end
+    local makeIndent =function()
+        write(string.rep(indentSymbol, indent))
+    end
+    makeIndent(indent)
+    write("{\n")
+    Msg_Format_Indent(write, msg, indent+1)
+    makeIndent(indent)
+    write("}\n")
+    return table.concat(out)
+end
+function KyleProtoFmt.ProtoBufToTableFormat(msg,indent)
+    return M.Format(msg,indent)
+end
+function IsProtoBuffTable(tableObj )
+    if tableObj and tableObj.ListFields~=nil and type(tableObj.ListFields)=='function' then
+        return true
+    end
+    return false
+end
+
+
+function GetVarDump(value, depth, key,stackDepth)
+    if value== nil then
+        return "nil value"
+    end
+    if stackDepth==nil then
+        stackDepth =0
+    end
+    stackDepth=stackDepth+1
+    --to prevent stack overflow
+    if stackDepth>8 then
+        return nil
+    end
+
+
+
+    local contentStr = ""
+    local addContent=function(str ,makeNewLine)
+        if str~=nil and str ~='' then
+            contentStr =string.format('%s%s', contentStr,tostring(str))
+        end
+    end
+
+    local linePrefix = ""
+    local indent = ""
+    if key ~= nil then
+        linePrefix = key.." = "
+    end
+    if depth == nil then
+        depth = 0
+    else
+        depth = depth + 1
+        for i=1, depth do indent = indent .. indentSymbol end
+    end
+    if type(value) == 'table' then
+        if IsProtoBuffTable(value )==true then
+            addContent(string.format('%s%s(protoBufData)\n',indent ,linePrefix,indent))
+            addContent(tostring(KyleProtoFmt.ProtoBufToTableFormat(value,depth)))
+            return contentStr
+        end
+
+        local mTable = getmetatable(value)
+        if mTable == nil then
+            addContent(string.format('%s%s(table)\n%s{',indent ,linePrefix,indent,indent))
+            for tableKey, tableValue in pairs(value) do
+                if value~=tableValue then
+                    local content  = GetVarDump(tableValue, depth, tableKey,stackDepth)
+                    if content==nil then
+                        --reachMaxStack
+                    else
+                        addContent('\n'..content)
+                    end
+                end
+            end
+            addContent('\n'..indent ..'}')
+        else
+            addContent(string.format('%s%s(metatable)\n%s{',indent ,linePrefix,indent,indent))
+            --value = mTable
+            --if #value==0 then
+            for someKey,someValue in pairs(value) do
+                if someValue ~= value then
+                    addContent("\n\t" ..indent .. tostring(someKey).." :("..type(someValue)..")");
+                    local content  = GetVarDump(someValue, depth, someKey,stackDepth)
+                    addContent('\n'..tostring(content))
+                end
+            end
+            ----end
+            --addContent('\n'..indent ..'}')
+            ----proto metatable will cause infinite loop,so we just return
+            --return contentStr
+        end
+
+    elseif type(value) == 'function' or type(value) == 'thread' or type(value) == 'userdata'  or value == nil     then
+        addContent(indent..tostring(value))
+    else
+        addContent(indent..linePrefix..tostring(value).." ("..type(value)..") ")
+    end
+    return contentStr
+end
