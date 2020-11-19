@@ -1,3 +1,0 @@
- Unity already has a wrapper for getting and accessing clipborad content ,quite handy
- string content = GUIUtility.systemCopyBuffer;
-	    print("kkkkk " + content);
