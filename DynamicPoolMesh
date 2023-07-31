@@ -1,0 +1,115 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+[ExecuteInEditMode]
+public class DynamicPoolMesh : MonoBehaviour
+{
+    public float height = 4;
+
+
+    [Range(0,10)]
+    public float leftWidth = 2;
+    [Range(0,10)]
+    public float middleWidth = 4;
+    [Range(0,10)]
+    public float rightWidth = 4;
+
+    public Sprite RefSprite;
+    
+    void Start()
+    {
+        UpdateMesh();
+    }
+
+    private void OnValidate()
+    {
+        
+        GetComponent<MeshRenderer>().sharedMaterial.mainTexture = RefSprite.texture;
+        UpdateMesh();
+    }
+
+    /*
+     *  1________2______________5_______6
+     * |        |               |       |
+     * |        |               |       |
+     * |        |               |       |
+     * |        |               |       |
+     * 0----L---3-------M-------4--R----7       
+     */
+    private void UpdateMesh()
+    {
+        Mesh mesh = new Mesh();
+        Vector3[] vertices = new Vector3[8];
+        int[] triangles = new int[18];
+        Vector2[] uv = new Vector2[8];
+        float totalWidth = leftWidth + middleWidth + rightWidth;
+        #region 顶点位置
+    
+        vertices[0] = new Vector3(0, 0, 0); 
+        vertices[1] = new Vector3(0, height, 0); 
+        vertices[2] = new Vector3(leftWidth, height, 0); 
+        vertices[3] = new Vector3(leftWidth, 0, 0);
+        vertices[4] = new Vector3(leftWidth+middleWidth, 0, 0); 
+        vertices[5] = new Vector3(leftWidth+middleWidth, height, 0); 
+        vertices[6] = new Vector3(totalWidth, height, 0); 
+        vertices[7] = new Vector3(totalWidth, 0, 0);
+
+        #endregion 顶点位置
+
+        #region 顶点索引
+        //顺时针索引
+        triangles[0] = 0; 
+        triangles[1] = 1;
+        triangles[2] = 3; 
+        
+        triangles[3] = 3; 
+        triangles[4] = 1;
+        triangles[5] = 2; 
+        
+        triangles[6] = 3; 
+        triangles[7] = 2; 
+        triangles[8] = 5; 
+        
+        triangles[9] = 5; 
+        triangles[10] = 4; 
+        triangles[11] = 3; 
+        
+        triangles[12] = 4; 
+        triangles[13] = 5; 
+        triangles[14] = 7; 
+        
+                
+        triangles[15] = 7; 
+        triangles[16] = 5; 
+        triangles[17] = 6;
+        #endregion
+
+        #region UV
+        var border = RefSprite.border; //X=left, Y=bottom, Z=right, W=top.
+        var size = RefSprite.textureRect;
+        var uvLeft = border.x / size.width;
+        var uvRight = border.z / size.width;
+        uv[0] = new Vector2(0, 0); 
+        uv[1] = new Vector2(0, 1); 
+        uv[2] = new Vector2(uvLeft, 1); 
+        
+        uv[3] = new Vector2(uvLeft, 0); 
+        uv[4] = new Vector2(uvRight, 0); 
+        uv[5] = new Vector2(uvRight, 1); 
+        uv[6] = new Vector2(1, 1); 
+        uv[7] = new Vector2(1, 0); 
+        
+
+        #endregion UV
+       
+
+        mesh.vertices = vertices;
+        mesh.triangles = triangles;
+        mesh.uv = uv;
+
+        GetComponent<MeshFilter>().mesh = mesh;
+    }
+
+
+}
