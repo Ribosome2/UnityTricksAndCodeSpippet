@@ -1,0 +1,220 @@
+using System;
+using GameLogic;
+using UnityEngine;
+
+namespace GameLogic
+{
+    public static class AutoAdaptResolution
+    {
+        public static float matchWidthOrHeight = 0;
+        public static float viewAnchorX = 0;
+        public static float viewAnchorY = 0;
+        public static float viewAnchorYMin = 0;
+        public static float viewAnchorYMax = 1;
+        
+        public static float viewAnchorYMin_IgnoreSafeArea = 0;
+        public static float viewAnchorYMax_IgnoreSafeArea = 1;
+       
+        public static void InitAdaptUI()
+        {
+            float screenFixWidth=AdaptUISetting.screenFixWidth;
+            float screenMinHeight=AdaptUISetting.screenMinHeight;
+            float screenMaxHeight = AdaptUISetting.screenMaxHeight_UI;
+            float screenWidth = UnityEngine.Device.Screen.width;
+            float screenHeight = UnityEngine.Device.Screen.height;
+            float screenRatio = screenHeight / screenWidth;
+            float baseRatio = screenMinHeight / screenFixWidth;
+            float maxRatio = screenMaxHeight / screenFixWidth;
+            float safeAreaRatio = UnityEngine.Device.Screen.safeArea.height / UnityEngine.Device.Screen.safeArea.width;
+            matchWidthOrHeight = safeAreaRatio > baseRatio ? 0 : 1;
+            UpdateXAnchor(safeAreaRatio, baseRatio);
+            UpdateYAnchor(screenRatio, maxRatio);
+            //为了微信小程序，上面最少留70，下面最少留0,暂时不用考虑微信小游戏，就设置0
+            float minAppBottomBar = 0;
+            float minAppTopBar = 0;
+            var heightWithBar = screenMaxHeight + minAppBottomBar + minAppTopBar;
+            var screenRatioWithBar = heightWithBar / screenFixWidth;
+            if (safeAreaRatio > screenRatioWithBar) //安全区域比例比最高分设计比+上下刘海大，这时候上下已经保证了刘海，只要把区域限制在最高分设计比例就行
+            {
+                var maxHeight = screenWidth * maxRatio;
+                var emptyHeight = screenHeight - maxHeight;
+                var halfOffset = emptyHeight / screenHeight * 0.5f;
+                viewAnchorYMin = halfOffset;
+                viewAnchorYMax = 1 - halfOffset;
+            }
+            else
+            {
+                UpdateBySafeArea(  baseRatio, screenRatio, minAppTopBar,  minAppBottomBar);
+            }
+
+            UpdateAnchorWithoutSafeArea(baseRatio,screenRatio,screenRatioWithBar,screenWidth,maxRatio,screenHeight);
+        }
+
+        private static void UpdateAnchorWithoutSafeArea(float baseRatio,float screenRatio,float screenRatioWithBar,float screenWidth,float maxRatio,float screenHeight )
+        {
+            if (screenRatio > screenRatioWithBar) 
+            {
+                var maxHeight = screenWidth * maxRatio;
+                var emptyHeight = screenHeight - maxHeight;
+                var halfOffset = emptyHeight / screenHeight * 0.5f;
+                viewAnchorYMin_IgnoreSafeArea = halfOffset;
+                viewAnchorYMax_IgnoreSafeArea = 1 - halfOffset;
+            }
+            else
+            {
+                UpdateBySafeArea(  baseRatio, screenRatio, 0,  0);
+            }
+        }
+
+
+        private static void UpdateBySafeArea(  float baseRatio, float screenRatio,
+            float minAppTopBar,  float minAppBottomBar)
+        {
+            Rect safeArea = UnityEngine.Screen.safeArea;
+            float screenWidth = UnityEngine.Device.Screen.width;
+            float screenHeight = UnityEngine.Device.Screen.height;
+
+            var minY = safeArea.yMin;
+            var maxY = safeArea.yMax;
+            if (TryIgnoreTopAdaptByCutout())
+            {
+                //真机实验备注： 经实验，cutout的数据只有当挖孔的区域是在上面的时候才会有数据，如果是在左右或者在下面，就没有数据
+                maxY = screenHeight;
+                Debug.Log("IgnoreTopAdaptByCutout---");
+            }
+            float safeAreaRatio = safeArea.height / screenWidth;
+            if (safeAreaRatio > baseRatio)
+            {
+                float flexibleRatio = screenRatio - baseRatio;
+                var topRatio = minAppTopBar / screenHeight;
+                //尽量保留，不够空间就不留
+                if (flexibleRatio > topRatio)
+                {
+                    maxY = Mathf.Min(maxY, screenHeight - minAppTopBar);
+                    flexibleRatio -= topRatio;
+                }
+
+                var bottomRatio = minAppBottomBar / screenHeight;
+                if (flexibleRatio > bottomRatio)
+                {
+                    minY = Mathf.Max(minY, minAppBottomBar);
+                }
+            }
+            else
+            {
+                //屏幕比例比标准的还小，左右会留黑边，这时候不做最少留90，下面最少留50的限制
+            }
+
+            viewAnchorYMin = minY / screenHeight;
+            viewAnchorYMax = maxY / screenHeight;
+        }
+
+
+        /// <summary>
+        /// 如果挖孔区域在左右摄像机范围外，就不用管上面的安全区域
+        /// </summary>
+        /// <returns></returns>
+        static bool TryIgnoreTopAdaptByCutout()
+        {
+            
+            if(viewAnchorX <= 0)  //左右没有给摄像机留空间，就不能用挖孔区域来判断
+            {
+                return false;
+            }
+
+            var cutouts = UnityEngine.Device.Screen.cutouts;  
+            if(cutouts == null || cutouts.Length == 0)//没有挖孔区域，就不能用挖孔区域来判断
+            {
+                return false;
+            }
+            
+            
+            //如果挖孔区域在左右摄像机范围外，就不用管上面的安全区域
+            bool cutoutInCameraRange = false;
+            var screenWidth = UnityEngine.Device.Screen.width;
+            float cameraMinX = viewAnchorX * screenWidth;
+            float cameraMaxX = (1- viewAnchorX) * screenWidth;
+            foreach (var cutout in cutouts)
+            {
+                var notInRange =cutout.xMax < cameraMinX || cutout.xMin > cameraMaxX;
+                Debug.Log("viewAnchorX"+viewAnchorX+" not in range "+notInRange+" xMax"+cutout.xMax+" xMin"+cutout.xMin+" cameraMinX"+cameraMinX+" cameraMaxX"+cameraMaxX);
+                if (notInRange==false)
+                {
+                    cutoutInCameraRange = true;
+                    break;
+                }
+            }
+
+            return cutoutInCameraRange==false;
+        }
+
+        private static void UpdateXAnchor(float screenRatio, float baseRatio)
+        {
+            if (screenRatio < baseRatio)
+            {
+                viewAnchorX = (baseRatio - screenRatio) / baseRatio / 2;
+            }
+        }
+        
+        private static void UpdateYAnchor(float screenRatio, float maxRatio)
+        {
+            if (screenRatio > maxRatio)
+            {
+                viewAnchorY = (screenRatio-maxRatio ) / screenRatio / 2;
+            }
+        }
+
+        public static void SetupCanvasRoot(RectTransform rootTransform,bool ignoreBottom=false)
+        {
+            rootTransform.anchorMin = new Vector2(viewAnchorX, ignoreBottom?viewAnchorYMin_IgnoreSafeArea:viewAnchorYMin);
+            rootTransform.anchorMax = new Vector2(1 - viewAnchorX, viewAnchorYMax);
+        }
+        
+        public static void SetupCanvasRootWithoutSafeArea(RectTransform rootTransform)
+        {
+            rootTransform.anchorMin = new Vector2(viewAnchorX, viewAnchorYMin_IgnoreSafeArea);
+            rootTransform.anchorMax = new Vector2(1 - viewAnchorX, viewAnchorYMax_IgnoreSafeArea);
+        }
+
+        public static void AdaptSceneCamera(Camera targetCamera)
+        {
+            if (targetCamera == null)
+            {
+                return;
+            }
+            
+            float defaultRatio = AdaptUISetting.screenMaxHeight_Scene / AdaptUISetting.screenFixWidth;
+            float maxUIRatio = AdaptUISetting.screenMaxHeight_Scene / AdaptUISetting.screenFixWidth;
+            float minRatio = AdaptUISetting.screenMinHeight / AdaptUISetting.screenFixWidth;
+            float screenWidth = UnityEngine.Device.Screen.width;
+            float screenHeight = UnityEngine.Device.Screen.height;
+            float screenRatio = screenHeight / screenWidth;
+            float fovRatio = 1;
+            if (screenRatio < maxUIRatio)
+            {
+                screenRatio = Math.Max(screenRatio, minRatio);
+                fovRatio = defaultRatio / screenRatio;
+            }
+            else
+            {
+                fovRatio = defaultRatio / maxUIRatio;
+            }
+            var defaultFov = targetCamera.fieldOfView;
+            float finalFov = defaultFov / fovRatio;
+            targetCamera.fieldOfView = finalFov;
+            targetCamera.rect = new Rect(viewAnchorX, viewAnchorY, 1 - viewAnchorX * 2, 1-viewAnchorY*2);
+        }
+
+
+        private const float ShowModelProportion = 750 / 1500f;
+        /// <summary>
+        /// 检测是否是长屏,目前宽高比小于0.5就是长屏
+        /// </summary>
+        /// <returns></returns>
+        public static bool CheckIsHeightView(Canvas canvas)
+        {
+            var rect = canvas.gameObject.GetComponent<RectTransform>();
+            return rect.rect.width / rect.rect.height <= ShowModelProportion;
+        }
+    }
+}
