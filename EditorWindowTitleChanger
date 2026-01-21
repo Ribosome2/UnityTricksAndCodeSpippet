@@ -2,8 +2,11 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using Unity.EditorCoroutines.Editor;
 using UnityEngine;
 using  UnityEditor;
+using Environment = System.Environment;
+
 #if UNITY_EDITOR_WIN
 [InitializeOnLoad]
 public static class EditorWindowTitleChanger{
@@ -22,22 +25,41 @@ public static class EditorWindowTitleChanger{
     {
         return GetActiveWindow();
 		
-	}
-     static EditorWindowTitleChanger()
+    }
+    static EditorWindowTitleChanger()
     {
         //Get the window handle.
+        CheckChangeTitle();
+        EditorCoroutineUtility.StartCoroutineOwnerless(DelayedInitCoroutine());
+        // 订阅播放状态变化事件
+        EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+    }
+
+    private static void OnPlayModeStateChanged(PlayModeStateChange obj)
+    {
+        CheckChangeTitle();
+    }
+
+    private static void CheckChangeTitle()
+    {
         var windowPtr = GetActiveWindow();
-        var customTitle = Application.dataPath;
+        var customTitle = Environment.CurrentDirectory;
         var sb = new StringBuilder(200);
         GetWindowText(windowPtr,sb,200);
         var oldTitle = sb.ToString();
-        Debug.Log("Change:2   "+oldTitle);
         if (!oldTitle.Contains("|"))
         {
             customTitle = oldTitle + " | " + customTitle;
-            //Set the title text using the window handle.
             SetWindowText(windowPtr, customTitle);
         }
+    }
+
+    private static IEnumerator DelayedInitCoroutine()
+    {
+        // 等待5秒
+        yield return new WaitForSeconds(5f);
+
+       CheckChangeTitle();
     }
 }
 #endif
